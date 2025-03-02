@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const Worker = require("../models/Worker");
+const User = require("../models/User");
 const nodemailer = require("nodemailer");
 const twilio = require("twilio");
 
@@ -22,25 +22,24 @@ function generateOTP() {
 }
 
 // إرسال OTP عبر البريد أو الهاتف
-const sendOtp = async (worker, method) => {
+const sendOtp = async (user, method) => {
   const otp = generateOTP();
-  worker.resetOTP = otp;
-  worker.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // صلاحية 10 دقائق
-  await worker.save();
+  user.resetOTP = otp;
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // صلاحية 10 دقائق
+  await user.save();
 
   if (method === "email") {
-    const mailOptions = {
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: worker.email,
+      to: user.email,
       subject: "Your OTP Code",
       text: Your OTP code is ${otp}. It will expire in 10 minutes.,
-    };
-    await transporter.sendMail(mailOptions);
+    });
   } else if (method === "phone") {
     await twilioClient.messages.create({
       body: Your OTP code is ${otp}. It will expire in 10 minutes.,
       from: process.env.TWILIO_PHONE_NUMBER,
-      to: worker.phoneNumber,
+      to: user.phoneNumber,
     });
   }
 };
@@ -49,11 +48,11 @@ const sendOtp = async (worker, method) => {
 exports.sendOtp = async (req, res) => {
   const { email, phoneNumber } = req.body;
   try {
-    let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
-    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    let user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const method = email ? "email" : "phone";
-    await sendOtp(worker, method);
+    await sendOtp(user, method);
 
     res.status(200).json({ message: OTP sent successfully to ${method} });
   } catch (err) {
@@ -65,16 +64,15 @@ exports.sendOtp = async (req, res) => {
 exports.verifyOtp = async (req, res) => {
   const { email, phoneNumber, otp } = req.body;
   try {
-    let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
-    if (!worker) return res.status(404).json({ message: "Worker not found" });
-
-    if (worker.resetOTP !== otp  new Date() > worker.otpExpires)
+    let user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.resetOTP !== otp  new Date() > user.otpExpires)
       return res.status(400).json({ message: "Invalid or expired OTP" });
 
-    worker.isVerified = true;
-    worker.resetOTP = null;
-    worker.otpExpires = null;
-    await worker.save();
+    user.isVerified = true;
+    user.resetOTP = null;
+    user.otpExpires = null;
+    await user.save();
 
     res.status(200).json({ message: "OTP verified successfully" });
   } catch (err) {
@@ -82,20 +80,20 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-// تسجيل عامل جديد بعد التحقق من OTP
-exports.registerWorker = async (req, res) => {
+// تسجيل مستخدم جديد
+exports.registerUser = async (req, res) => {
   try {
     const { firstName, familyName, email, phoneNumber, password } = req.body;
 
-    if (!email  !phoneNumber)
-      return res.status(400).json({ message: "You must provide both an email and a phone number." });
+    if (!email && !phoneNumber)
+      return res.status(400).json({ message: "You must provide either an email or a phone number." });
 
-    if (await Worker.findOne({ $or: [{ email }, { phoneNumber }] }))
+    if (await User.findOne({ $or: [{ email }, { phoneNumber }] }))
       return res.status(400).json({ message: "Email or phone number already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newWorker = new Worker({
+    const newUser = new User({
       firstName,
       familyName,
       email,
@@ -104,77 +102,67 @@ exports.registerWorker = async (req, res) => {
       isVerified: false,
     });
 
-    await newWorker.save();
-    await sendOtp(newWorker, "email");
-    await sendOtp(newWorker, "phone");
+    await newUser.save();
+    await sendOtp(newUser, email ? "email" : "phone");
 
-    res.status(201).json({ message: "Worker registered. OTP sent to email and phone." });
+    res.status(201).json({ message: "User registered. OTP sent." });
   } catch (err) {
-    res.status(500).json({ message: "Error registering worker", error: err.message });
+    res.status(500).json({ message: "Error registering user", error: err.message });
   }
 };
 
-// تسجيل دخول العامل
-exports.loginWorker = async (req, res) => {
+// تسجيل دخول المستخدم
+exports.loginUser = async (req, res) => {
   try {
     const { email, phoneNumber, password } = req.body;
     if (!email && !phoneNumber)
       return res.status(400).json({ message: "You must provide either an email or a phone number." });
 
-    const worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
-    if (!worker) return res.status(400).json({ message: "Invalid credentials" });
-    const isMatch = await bcrypt.compare(password, worker.password);
+    const user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    if (!worker.isVerified)
+    if (!user.isVerified)
       return res.status(403).json({ message: "You must verify your account first." });
 
-    const token = jwt.sign({ workerId: worker._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.status(200).json({ message: "Worker logged in successfully", token, worker });
+    res.status(200).json({ message: "User logged in successfully", token, user });
   } catch (err) {
-    res.status(500).json({ message: "Error logging in worker", error: err.message });
+    res.status(500).json({ message: "Error logging in user", error: err.message });
   }
 };
+
+// إرسال OTP لنسيان كلمة المرور
 exports.forgotPassword = async (req, res) => {
-  const { emailOrPhone } = req.body;
+  const { email, phoneNumber } = req.body;
   try {
-    // البحث عن العامل باستخدام البريد الإلكتروني أو رقم الهاتف
-    const worker = await Worker.findOne({
-      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
-    });
+    const user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!worker) return res.status(404).json({ message: "Worker not found" });
-
-    // تحديد ما إذا كان الإدخال بريدًا إلكترونيًا أو رقم هاتف
-    const isEmail = worker.email === emailOrPhone;
-    const method = isEmail ? "email" : "phone";
-
-    await sendOtp(worker, method);
-    res.status(200).json({ message: `Password reset OTP sent to ${method}` });
+    await sendOtp(user, email ? "email" : "phone");
+    res.status(200).json({ message: "Password reset OTP sent." });
   } catch (err) {
     res.status(500).json({ message: "Error sending OTP", error: err.message });
   }
 };
+
+// إعادة تعيين كلمة المرور
 exports.resetPassword = async (req, res) => {
-  const { emailOrPhone, otp, newPassword } = req.body;
+  const { email, phoneNumber, otp, newPassword } = req.body;
   try {
-    // البحث عن العامل باستخدام البريد الإلكتروني أو رقم الهاتف
-    const worker = await Worker.findOne({
-      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
-    });
+    const user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!worker) return res.status(404).json({ message: "Worker not found" });
-
-    // التحقق من صحة الـ OTP وصلاحيته
-    if (worker.resetOTP !== otp || new Date() > worker.otpExpires)
+    if (user.resetOTP !== otp  new Date() > user.otpExpires)
       return res.status(400).json({ message: "Invalid or expired OTP" });
 
-    // تحديث كلمة المرور
-    worker.password = await bcrypt.hash(newPassword, 10);
-    worker.resetOTP = null;
-    worker.otpExpires = null;
-    await worker.save();
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetOTP = null;
+    user.otpExpires = null;
+    await user.save();
 
     res.status(200).json({ message: "Password reset successful" });
   } catch (err) {
