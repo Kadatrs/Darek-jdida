@@ -21,24 +21,27 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// إرسال OTP عبر البريد أو الهاتف
+// إرسال OTP للبريد أو الهاتف
 const sendOtp = async (worker, method) => {
   const otp = generateOTP();
-  worker.resetOTP = otp;
-  worker.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // صلاحية 10 دقائق
-  await worker.save();
+  const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // صلاحية 10 دقائق
 
   if (method === "email") {
-    const mailOptions = {
+    worker.emailOTP = otp;
+    worker.emailOtpExpires = expiryTime;
+    await worker.save();
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: worker.email,
-      subject: "Your OTP Code",
-      text: Your OTP code is ${otp}. It will expire in 10 minutes.,
-    };
-    await transporter.sendMail(mailOptions);
+      subject: "Your Email OTP Code",
+      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+    });
   } else if (method === "phone") {
+    worker.phoneOTP = otp;
+    worker.phoneOtpExpires = expiryTime;
+    await worker.save();
     await twilioClient.messages.create({
-      body: Your OTP code is ${otp}. It will expire in 10 minutes.,
+      body: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: worker.phoneNumber,
     });
@@ -52,10 +55,10 @@ exports.sendOtp = async (req, res) => {
     let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
     if (!worker) return res.status(404).json({ message: "Worker not found" });
 
-    const method = email ? "email" : "phone";
-    await sendOtp(worker, method);
+    if (email) await sendOtp(worker, "email");
+    if (phoneNumber) await sendOtp(worker, "phone");
 
-    res.status(200).json({ message: OTP sent successfully to ${method} });
+    res.status(200).json({ message: "OTP sent successfully to email and phone" });
   } catch (err) {
     res.status(500).json({ message: "Error sending OTP", error: err.message });
   }
@@ -63,20 +66,40 @@ exports.sendOtp = async (req, res) => {
 
 // التحقق من OTP
 exports.verifyOtp = async (req, res) => {
-  const { email, phoneNumber, otp } = req.body;
+  const { email, phoneNumber, emailOtp, phoneOtp } = req.body;
   try {
     let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
     if (!worker) return res.status(404).json({ message: "Worker not found" });
 
-    if (worker.resetOTP !== otp  new Date() > worker.otpExpires)
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    let emailVerified = false, phoneVerified = false;
 
-    worker.isVerified = true;
-    worker.resetOTP = null;
-    worker.otpExpires = null;
-    await worker.save();
+    if (email && emailOtp) {
+      if (worker.emailOTP === emailOtp && new Date() < worker.emailOtpExpires) {
+        emailVerified = true;
+        worker.emailOTP = null;
+        worker.emailOtpExpires = null;
+      } else {
+        return res.status(400).json({ message: "Invalid or expired email OTP" });
+      }
+    }
 
-    res.status(200).json({ message: "OTP verified successfully" });
+    if (phoneNumber && phoneOtp) {
+      if (worker.phoneOTP === phoneOtp && new Date() < worker.phoneOtpExpires) {
+        phoneVerified = true;
+        worker.phoneOTP = null;
+        worker.phoneOtpExpires = null;
+      } else {
+        return res.status(400).json({ message: "Invalid or expired phone OTP" });
+      }
+    }
+
+    if (emailVerified && phoneVerified) {
+      worker.isVerified = true;
+      await worker.save();
+      res.status(200).json({ message: "Both OTPs verified successfully" });
+    } else {
+      res.status(400).json({ message: "Both email and phone OTPs are required" });
+    }
   } catch (err) {
     res.status(500).json({ message: "Error verifying OTP", error: err.message });
   }
@@ -87,11 +110,12 @@ exports.registerWorker = async (req, res) => {
   try {
     const { firstName, familyName, email, phoneNumber, password } = req.body;
 
-    if (!email  !phoneNumber)
+    if (!email || !phoneNumber)
       return res.status(400).json({ message: "You must provide both an email and a phone number." });
 
-    if (await Worker.findOne({ $or: [{ email }, { phoneNumber }] }))
+    if (await Worker.findOne({ $or: [{ email }, { phoneNumber }] })){
       return res.status(400).json({ message: "Email or phone number already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -113,8 +137,6 @@ exports.registerWorker = async (req, res) => {
     res.status(500).json({ message: "Error registering worker", error: err.message });
   }
 };
-
-// تسجيل دخول العامل
 exports.loginWorker = async (req, res) => {
   try {
     const { email, phoneNumber, password } = req.body;
