@@ -135,30 +135,72 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// إرسال OTP لنسيان كلمة المرور
+// إعادة تعيين كلمة المرور
 exports.forgotPassword = async (req, res) => {
   const { email, phoneNumber } = req.body;
   try {
-    const user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    let user;
+    if (email) {
+      user = await User.findOne({ email });
+    } else if (phoneNumber) {
+      user = await User.findOne({ phoneNumber });
+    } else {
+      return res.status(400).json({ message: "Please provide either email or phone number." });
+    }
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    await sendOtp(user, email ? "email" : "phone");
-    res.status(200).json({ message: "Password reset OTP sent." });
+    // تحديد طريقة إرسال OTP بناءً على ما تم تسجيله (email أو phone)
+    const method = user.email ? "email" : "phone";
+    await sendOtp(user, method); // إرسال OTP عبر البريد أو الهاتف
+
+    res.status(200).json({ message: `${method} OTP sent successfully` });
   } catch (err) {
     res.status(500).json({ message: "Error sending OTP", error: err.message });
   }
 };
 
-// إعادة تعيين كلمة المرور
+
+// // تأكيد إعادة تعيين كلمة المرور
+// exports.resetPassword = async (req, res) => {
+//   const { email, otp, newPassword } = req.body;
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user || user.resetOTP !== otp || new Date() > user.otpExpires)
+//       return res.status(400).json({ message: "Invalid or expired OTP" });
+//     user.password = await bcrypt.hash(newPassword, 10);
+//     user.resetOTP = null;
+//     user.otpExpires = null;
+//     await user.save();
+//     res.status(200).json({ message: "Password reset successful" });
+//   } catch (err) {
+//     res.status(500).json({ message: "Error resetting password", error: err.message });
+//   }
+// };
+
+
+// تأكيد إعادة تعيين كلمة المرور
 exports.resetPassword = async (req, res) => {
   const { email, phoneNumber, otp, newPassword } = req.body;
+
   try {
-    const user = await User.findOne({ $or: [{ email }, { phoneNumber }] });
+    let user;
+    if (email) {
+      user = await User.findOne({ email });
+    } else if (phoneNumber) {
+      user = await User.findOne({ phoneNumber });
+    } else {
+      return res.status(400).json({ message: "Please provide either email or phone number." });
+    }
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (user.resetOTP !== otp  new Date() > user.otpExpires)
+    // التحقق من صحة الـ OTP وعدم انتهاء صلاحيته
+    if (user.resetOTP !== otp || new Date() > user.otpExpires) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
 
+    // تحديث كلمة المرور بعد التحقق من OTP
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetOTP = null;
     user.otpExpires = null;
