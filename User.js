@@ -4,8 +4,8 @@ const UserSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
     familyName: { type: String, required: true },
-    email: { type: String, unique: true, sparse: true },
-    phoneNumber: { type: String, unique: true, sparse: true }, 
+    email: { type: String, unique: true, sparse: true, required: false },
+    phoneNumber: { type: String, unique: true, sparse: true, required: false },
     password: { type: String, required: true },
     googleId: { type: String, default: null },
     createdAt: { type: Date, default: Date.now },
@@ -15,15 +15,22 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+function validateOneExists(value, helpers) {
+  if (!value.email && !value.phoneNumber) {
+    throw new Error("Either email or phone number is required.");
+  }
+  if (value.email && value.phoneNumber) {
+    throw new Error("You can only provide either email or phone number, not both.");
+  }
+}
 
 UserSchema.pre("validate", function (next) {
-  if (!this.email && !this.phoneNumber) {
-    return next(new Error("Either email or phone number is required."));
+  try {
+    validateOneExists(this);
+    next();
+  } catch (error) {
+    next(error);
   }
-  if (this.email && this.phoneNumber) {
-    return next(new Error("You can only provide either email or phone number, not both."));
-  }
-  next();
 });
 
 const User = mongoose.model("User", UserSchema);
