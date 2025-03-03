@@ -4,7 +4,7 @@ const WorkerSchema = new mongoose.Schema({
   firstName: { type: String },
   familyName: { type: String },
   email: { type: String, required: true, unique: true },
-  phoneNumber: { type: String, required: true},
+  phoneNumber: { type: String, required: true, unique: true }, 
   password: { type: String, required:true }, // Not required for Google login
   googleId: { type: String }, // Only required for Google login
   //profilePicture: { type: String }, // Optional
