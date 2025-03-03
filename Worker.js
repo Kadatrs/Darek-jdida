@@ -1,27 +1,16 @@
 const mongoose = require("mongoose");
 
-const WorkerSchema = new mongoose.Schema({
-  firstName: { type: String },
-  familyName: { type: String },
-  email: { type: String, required: true, unique: true },
-  phoneNumber: { type: String, required: true, unique: true }, 
-  password: { type: String, required:true }, // Not required for Google login
-  googleId: { type: String }, // Only required for Google login
-  //profilePicture: { type: String }, // Optional
-  createdAt: { type: Date, default: Date.now },
-  resetOTP: { type: String, default: null },
-  otpExpires: { type: Date, default: null }
-},
-{ timestamps: true }
-);
-
-// Ensure either `password` or `googleId` exists
-WorkerSchema.pre("save", function (next) {
-  if (!this.password && !this.googleId) {
-    return next(new Error("Either password or googleId must be provided"));
-  }
-  next();
+const workerSchema = new mongoose.Schema({
+  firstName: String,
+  familyName: String,
+  email: { type: String, unique: true, required: true },
+  phoneNumber: { type: String, unique: true, required: true },
+  password: String,
+  isVerified: { type: Boolean, default: false },
+  emailOTP: String,
+  emailOtpExpires: Date,
+  phoneOTP: String,
+  phoneOtpExpires: Date,
 });
 
-const Worker = mongoose.model("Worker", WorkerSchema);
-module.exports = Worker;
+module.exports = mongoose.model("Worker", workerSchema);
