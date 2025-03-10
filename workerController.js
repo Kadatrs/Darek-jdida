@@ -21,32 +21,56 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// إرسال OTP للبريد أو الهاتف
-const sendOtp = async (worker, method) => {
-  const otp = generateOTP();
-  const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // صلاحية 10 دقائق
+// إرسال OTP عبر البريد أو الهاتف
+// const sendOtp = async (worker, method) => {
+//   const otp = generateOTP();
+//   worker.resetOTP = otp;
+//   worker.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // صلاحية 10 دقائق
+//   await worker.save();
 
-  if (method === "email") {
-    worker.emailOTP = otp;
-    worker.emailOtpExpires = expiryTime;
-    await worker.save();
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: worker.email,
-      subject: "Your Email OTP Code",
-      text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-    });
-  } else if (method === "phone") {
-    worker.phoneOTP = otp;
-    worker.phoneOtpExpires = expiryTime;
-    await worker.save();
-    await twilioClient.messages.create({
-      body: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: worker.phoneNumber,
-    });
-  }
+//   if (method === "email") {
+//     const mailOptions = {
+//       from: process.env.EMAIL_USER,
+//       to: worker.email,
+//       subject: "Your OTP Code",
+//       text: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+//     };
+//     await transporter.sendMail(mailOptions);
+//   } else if (method === "phone") {
+//     await twilioClient.messages.create({
+//       body: `Your OTP code is ${otp}. It will expire in 10 minutes.`,
+//       from: process.env.TWILIO_PHONE_NUMBER,
+//       to: worker.phoneNumber,
+//     });
+//   }
+// };
+
+const sendOtp = async (worker) => {
+  const otpEmail = generateOTP();
+  const otpPhone = generateOTP();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+  worker.verificationOTP = { email: otpEmail, phone: otpPhone }; // ✅ Store both OTPs
+  worker.otpExpires = otpExpires;
+  await worker.save();
+
+  // Send OTP via Email
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: worker.email,
+    subject: "Your OTP Code",
+    text: `Your Email OTP: ${otpEmail}. It will expire in 10 minutes.`,
+  };
+  await transporter.sendMail(mailOptions);
+
+  // Send OTP via SMS
+  await twilioClient.messages.create({
+    body: `Your Phone OTP: ${otpPhone}. It will expire in 10 minutes.`,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to: worker.phoneNumber,
+  });
 };
+
 
 // إرسال OTP عند الطلب
 exports.sendOtp = async (req, res) => {
@@ -55,57 +79,103 @@ exports.sendOtp = async (req, res) => {
     let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
     if (!worker) return res.status(404).json({ message: "Worker not found" });
 
-    if (email) await sendOtp(worker, "email");
-    if (phoneNumber) await sendOtp(worker, "phone");
+    const method = email ? "email" : "phone";
+    await sendOtp(worker, method);
 
-    res.status(200).json({ message: "OTP sent successfully to email and phone" });
+    res.status(200).json({ message: "OTP sent successfully to ${method}" });
   } catch (err) {
     res.status(500).json({ message: "Error sending OTP", error: err.message });
   }
 };
 
 // التحقق من OTP
+// exports.verifyOtp = async (req, res) => {
+//   const { email, phoneNumber, otp } = req.body;
+//   try {
+//     let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
+//     if (!worker) return res.status(404).json({ message: "Worker not found" });
+
+//     if (worker.resetOTP !== otp || new Date() > worker.otpExpires)
+//       return res.status(400).json({ message: "Invalid or expired OTP" });
+
+//     worker.isVerified = true;
+//     worker.resetOTP = null;
+//     worker.otpExpires = null;
+//     await worker.save();
+
+//     res.status(200).json({ message: "OTP verified successfully" });
+//   } catch (err) {
+//     res.status(500).json({ message: "Error verifying OTP", error: err.message });
+//   }
+// };
+
 exports.verifyOtp = async (req, res) => {
-  const { email, phoneNumber, emailOtp, phoneOtp } = req.body;
+  const { email, phoneNumber, otpEmail, otpPhone } = req.body;
+
   try {
-    let worker = await Worker.findOne({ $or: [{ email }, { phoneNumber }] });
+    // ✅ Find worker using email OR phoneNumber
+    let worker = await Worker.findOne({ 
+      $or: [{ email }, { phoneNumber }] 
+    });
+
     if (!worker) return res.status(404).json({ message: "Worker not found" });
 
-    let emailVerified = false, phoneVerified = false;
+    if (new Date() > worker.otpExpires)
+      return res.status(400).json({ message: "OTP has expired" });
 
-    if (email && emailOtp) {
-      if (worker.emailOTP === emailOtp && new Date() < worker.emailOtpExpires) {
-        emailVerified = true;
-        worker.emailOTP = null;
-        worker.emailOtpExpires = null;
-      } else {
-        return res.status(400).json({ message: "Invalid or expired email OTP" });
-      }
-    }
+    // ✅ Check OTP based on the method used
+    if (email && worker.verificationOTP.email !== otpEmail)
+      return res.status(400).json({ message: "Invalid email OTP" });
 
-    if (phoneNumber && phoneOtp) {
-      if (worker.phoneOTP === phoneOtp && new Date() < worker.phoneOtpExpires) {
-        phoneVerified = true;
-        worker.phoneOTP = null;
-        worker.phoneOtpExpires = null;
-      } else {
-        return res.status(400).json({ message: "Invalid or expired phone OTP" });
-      }
-    }
+    if (phoneNumber && worker.verificationOTP.phone !== otpPhone)
+      return res.status(400).json({ message: "Invalid phone OTP" });
 
-    if (emailVerified && phoneVerified) {
-      worker.isVerified = true;
-      await worker.save();
-      res.status(200).json({ message: "Both OTPs verified successfully" });
-    } else {
-      res.status(400).json({ message: "Both email and phone OTPs are required" });
-    }
+    // ✅ Mark worker as verified after checking the correct OTP
+    worker.isVerified = true;
+    worker.verificationOTP = { email: null, phone: null };
+    worker.otpExpires = null;
+    await worker.save();
+
+    res.status(200).json({ message: "Worker verified successfully" });
   } catch (err) {
     res.status(500).json({ message: "Error verifying OTP", error: err.message });
   }
 };
 
+
+
 // تسجيل عامل جديد بعد التحقق من OTP
+// exports.registerWorker = async (req, res) => {
+//   try {
+//     const { firstName, familyName, email, phoneNumber, password } = req.body;
+
+//     if (!email || !phoneNumber)
+//       return res.status(400).json({ message: "You must provide both an email and a phone number." });
+
+//     if (await Worker.findOne({ $or: [{ email }, { phoneNumber }] }))
+//       return res.status(400).json({ message: "Email or phone number already exists" });
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const newWorker = new Worker({
+//       firstName,
+//       familyName,
+//       email,
+//       phoneNumber,
+//       password: hashedPassword,
+//       isVerified: false,
+//     });
+
+//     await newWorker.save();
+//     await sendOtp(newWorker, "email");
+//     await sendOtp(newWorker, "phone");
+
+//     res.status(201).json({ message: "Worker registered. OTP sent to email and phone." });
+//   } catch (err) {
+//     res.status(500).json({ message: "Error registering worker", error: err.message });
+//   }
+// };
+
 exports.registerWorker = async (req, res) => {
   try {
     const { firstName, familyName, email, phoneNumber, password } = req.body;
@@ -113,9 +183,8 @@ exports.registerWorker = async (req, res) => {
     if (!email || !phoneNumber)
       return res.status(400).json({ message: "You must provide both an email and a phone number." });
 
-    if (await Worker.findOne({ $or: [{ email }, { phoneNumber }] })){
+    if (await Worker.findOne({ $or: [{ email }, { phoneNumber }] }))
       return res.status(400).json({ message: "Email or phone number already exists" });
-    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -129,14 +198,16 @@ exports.registerWorker = async (req, res) => {
     });
 
     await newWorker.save();
-    await sendOtp(newWorker, "email");
-    await sendOtp(newWorker, "phone");
+    await sendOtp(newWorker); // ✅ Send OTP to both email & phone
 
     res.status(201).json({ message: "Worker registered. OTP sent to email and phone." });
   } catch (err) {
     res.status(500).json({ message: "Error registering worker", error: err.message });
   }
 };
+
+
+// تسجيل دخول العامل
 exports.loginWorker = async (req, res) => {
   try {
     const { email, phoneNumber, password } = req.body;
