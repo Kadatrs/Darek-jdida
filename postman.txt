@@ -1,0 +1,405 @@
+✅ **Testing All Features in Postman - Step by Step**  
+
+📌 **Before testing, make sure:**  
+1️⃣ Your server is running:  
+   ```sh
+   npm start
+   ```
+2️⃣ You know your `PORT` (default is `5000`).  
+3️⃣ You have a registered user/worker to test authentication (`JWT`).  
+
+---
+
+## **📌 1️⃣ Testing User & Worker Authentication**
+### **🔹 Register a New User (`POST /api/auth/user/register`)**
+📌 **Method:** `POST`  
+📌 **URL:** `http://localhost:5000/api/auth/user/register`  
+📌 **Body (JSON):**
+```json
+{
+  "firstName": "John",
+  "familyName": "Doe",
+  "email": "john.doe@example.com",
+  "phone": "0678123456",
+  "password": "securePassword123"
+}
+```
+📌 **Expected Response:**  
+```json
+{
+  "message": "User registered successfully!",
+  "user": {
+    "_id": "65f2bc1a1234567890abcd",
+    "firstName": "John",
+    "familyName": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "0678123456"
+  }
+}
+```
+---
+### **🔹 User Login (`POST /api/auth/user/login`)**
+📌 **Method:** `POST`  
+📌 **URL:** `http://localhost:5000/api/auth/user/login`  
+📌 **Body (JSON):**
+```json
+{
+  "email": "john.doe@example.com",
+  "password": "securePassword123"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "Login successful!",
+  "token": "JWT_TOKEN_HERE"
+}
+```
+📌 **Save the `token`, you will need it for other tests.**
+
+---
+
+## **📌 2️⃣ Testing User & Worker Profiles**
+📌 **Add `Authorization: Bearer JWT_TOKEN_HERE` in `Headers` for each test.**
+
+### **🔹 Get User Profile (`GET /api/profile/user`)**
+📌 **Method:** `GET`  
+📌 **URL:** `http://localhost:5000/api/profile/user`  
+📌 **Headers:**
+```yaml
+Authorization: Bearer JWT_TOKEN_HERE
+```
+📌 **Expected Response:**
+```json
+{
+  "user_id": "65f2bc1a1234567890abcd",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "phone": "0678123456",
+  "profile_image_url": "",
+  "address": {
+    "latitude": null,
+    "longitude": null,
+    "full_address": ""
+  }
+}
+```
+
+---
+
+### **🔹 Update User Profile (`PUT /api/profile/user`)**
+📌 **Method:** `PUT`  
+📌 **Body (JSON):**
+```json
+{
+  "firstName": "John Updated",
+  "familyName": "Doe Updated"
+}
+```
+📌 **Expected Response:**  
+```json
+{
+  "message": "Profile updated successfully!"
+}
+```
+
+---
+
+## **📌 3️⃣ Testing Profile Picture Upload**
+### **🔹 Upload User Profile Picture (`PUT /api/profile/user/upload-profile-picture`)**
+📌 **Method:** `PUT`  
+📌 **URL:** `http://localhost:5000/api/profile/user/upload-profile-picture`  
+📌 **Headers:**
+```yaml
+Authorization: Bearer JWT_TOKEN_HERE
+```
+📌 **Body (`form-data`):**  
+- `Key:` `profilePicture`  
+- `Type:` `File`  
+- `Value:` **Choose an image from your device**  
+
+📌 **Expected Response:**  
+```json
+{
+  "message": "File uploaded successfully!",
+  "file": "uploads/USER_ID-TIMESTAMP-image.jpg"
+}
+```
+
+---
+
+## **📌 4️⃣ Testing Email or Phone Change**
+### **🔹 Request Email Change (`POST /api/profile/user/request-change-contact`)**
+📌 **Body (JSON):**
+```json
+{
+  "newEmail": "john.updated@example.com"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "OTP sent for contact update"
+}
+```
+
+---
+### **🔹 Verify Email Change (`POST /api/profile/user/verify-change-contact`)**
+📌 **Body (JSON):**
+```json
+{
+  "otp": "123456",
+  "newEmail": "john.updated@example.com"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "Contact updated successfully"
+}
+```
+
+---
+
+## **📌 5️⃣ Testing Location Update**
+### **🔹 Update User Location (`PUT /api/profile/user/location`)**
+📌 **Body (JSON):**
+```json
+{
+  "latitude": 36.7528,
+  "longitude": 3.0422,
+  "full_address": "Algiers, Algeria"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "Location updated successfully!"
+}
+```
+
+---
+
+### ✅ **📌 Summary**
+✔ **`POST /api/auth/user/register`** → Register a new user  
+✔ **`POST /api/auth/user/login`** → Login and receive a `JWT`  
+✔ **`GET /api/profile/user`** → Get user profile  
+✔ **`PUT /api/profile/user`** → Update user profile  
+✔ **`PUT /api/profile/user/upload-profile-picture`** → Upload profile picture  
+✔ **`POST /api/profile/user/request-change-contact`** → Request email or phone change  
+✔ **`POST /api/profile/user/verify-change-contact`** → Confirm change via OTP  
+✔ **`PUT /api/profile/user/location`** → Update user location  
+
+📂 **Do you want to add tests for any other features? 🚀🔥**
+
+
+
+
+////////////////////////////////////////    worker
+
+
+
+
+
+✅ **Testing All Worker Features in Postman - Step by Step**  
+
+📌 **Before testing, make sure:**  
+1️⃣ Your server is running:  
+   ```sh
+   npm start
+   ```
+2️⃣ You know your `PORT` (default is `5000`).  
+3️⃣ You have a registered worker to test authentication (`JWT`).  
+
+---
+
+## **📌 1️⃣ Testing Worker Authentication**
+### **🔹 Register a New Worker (`POST /api/auth/worker/register`)**
+📌 **Method:** `POST`  
+📌 **URL:** `http://localhost:5000/api/auth/worker/register`  
+📌 **Body (JSON):**
+```json
+{
+  "firstName": "Alice",
+  "familyName": "Smith",
+  "email": "alice.smith@example.com",
+  "phone": "0678993322",
+  "password": "securePassword123",
+  "job_type": "Electrician",
+  "experience_years": 5
+}
+```
+📌 **Expected Response:**  
+```json
+{
+  "message": "Worker registered successfully!",
+  "worker": {
+    "_id": "65f2bc1a1234567890abcd",
+    "firstName": "Alice",
+    "familyName": "Smith",
+    "email": "alice.smith@example.com",
+    "phone": "0678993322",
+    "job_type": "Electrician",
+    "experience_years": 5
+  }
+}
+```
+---
+### **🔹 Worker Login (`POST /api/auth/worker/login`)**
+📌 **Method:** `POST`  
+📌 **URL:** `http://localhost:5000/api/auth/worker/login`  
+📌 **Body (JSON):**
+```json
+{
+  "email": "alice.smith@example.com",
+  "password": "securePassword123"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "Login successful!",
+  "token": "JWT_TOKEN_HERE"
+}
+```
+📌 **Save the `token`, you will need it for other tests.**
+
+---
+
+## **📌 2️⃣ Testing Worker Profile**
+📌 **Add `Authorization: Bearer JWT_TOKEN_HERE` in `Headers` for each test.**
+
+### **🔹 Get Worker Profile (`GET /api/profile/worker`)**
+📌 **Method:** `GET`  
+📌 **URL:** `http://localhost:5000/api/profile/worker`  
+📌 **Headers:**
+```yaml
+Authorization: Bearer JWT_TOKEN_HERE
+```
+📌 **Expected Response:**
+```json
+{
+  "worker_id": "65f2bc1a1234567890abcd",
+  "name": "Alice Smith",
+  "email": "alice.smith@example.com",
+  "phone": "0678993322",
+  "profile_image_url": "",
+  "address": {
+    "latitude": null,
+    "longitude": null,
+    "full_address": ""
+  },
+  "job_type": "Electrician",
+  "experience_years": 5,
+  "total_jobs_completed": 0,
+  "average_rating": 0
+}
+```
+
+---
+
+### **🔹 Update Worker Profile (`PUT /api/profile/worker`)**
+📌 **Method:** `PUT`  
+📌 **Body (JSON):**
+```json
+{
+  "firstName": "Alice Updated",
+  "familyName": "Smith Updated",
+  "job_type": "Plumber"
+}
+```
+📌 **Expected Response:**  
+```json
+{
+  "message": "Profile updated successfully!"
+}
+```
+
+---
+
+## **📌 3️⃣ Testing Profile Picture Upload**
+### **🔹 Upload Worker Profile Picture (`PUT /api/profile/worker/upload-profile-picture`)**
+📌 **Method:** `PUT`  
+📌 **URL:** `http://localhost:5000/api/profile/worker/upload-profile-picture`  
+📌 **Headers:**
+```yaml
+Authorization: Bearer JWT_TOKEN_HERE
+```
+📌 **Body (`form-data`):**  
+- `Key:` `profilePicture`  
+- `Type:` `File`  
+- `Value:` **Choose an image from your device**  
+
+📌 **Expected Response:**  
+```json
+{
+  "message": "File uploaded successfully!",
+  "file": "uploads/WORKER_ID-TIMESTAMP-image.jpg"
+}
+```
+
+---
+
+## **📌 4️⃣ Testing Email or Phone Change**
+### **🔹 Request Email Change (`POST /api/profile/worker/request-change-contact`)**
+📌 **Body (JSON):**
+```json
+{
+  "newEmail": "alice.updated@example.com"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "OTP sent for contact update"
+}
+```
+
+---
+### **🔹 Verify Email Change (`POST /api/profile/worker/verify-change-contact`)**
+📌 **Body (JSON):**
+```json
+{
+  "otp": "123456",
+  "newEmail": "alice.updated@example.com"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "Contact updated successfully"
+}
+```
+
+---
+
+## **📌 5️⃣ Testing Location Update**
+### **🔹 Update Worker Location (`PUT /api/profile/worker/location`)**
+📌 **Body (JSON):**
+```json
+{
+  "latitude": 36.7528,
+  "longitude": 3.0422,
+  "full_address": "Algiers, Algeria"
+}
+```
+📌 **Expected Response:**
+```json
+{
+  "message": "Location updated successfully!"
+}
+```
+
+---
+
+### ✅ **📌 Summary**
+✔ **`POST /api/auth/worker/register`** → Register a new worker  
+✔ **`POST /api/auth/worker/login`** → Login and receive a `JWT`  
+✔ **`GET /api/profile/worker`** → Get worker profile  
+✔ **`PUT /api/profile/worker`** → Update worker profile  
+✔ **`PUT /api/profile/worker/upload-profile-picture`** → Upload profile picture  
+✔ **`POST /api/profile/worker/request-change-contact`** → Request email or phone change  
+✔ **`POST /api/profile/worker/verify-change-contact`** → Confirm change via OTP  
+✔ **`PUT /api/profile/worker/location`** → Update worker location  
+
+📂 **Do you want to add tests for any other features? 🚀🔥**
