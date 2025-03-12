@@ -1,4 +1,5 @@
 
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Worker = require("../models/Worker");
@@ -103,7 +104,7 @@ exports.verifyOtp = async (req, res) => {
 
 exports.registerWorker = async (req, res) => {
   try {
-    const { firstName, familyName, email, phoneNumber, password } = req.body;
+    const { firstName, familyName, email, phoneNumber, password, job_type } = req.body;
 
     if (!email || !phoneNumber)
       return res.status(400).json({ message: "You must provide both an email and a phone number." });
@@ -119,6 +120,7 @@ exports.registerWorker = async (req, res) => {
       email,
       phoneNumber,
       password: hashedPassword,
+      job_type,
       isVerified: false,
     });
 
@@ -241,14 +243,14 @@ exports.getWorkerProfile = async (req, res) => {
 // ✅ تحديث ملف العامل الشخصي
 exports.updateWorkerProfile = async (req, res) => {
   try {
-    const { firstName, familyName, workType } = req.body;
+    const { firstName, familyName, job_type } = req.body;
     const worker = await Worker.findById(req.user.id);
 
     if (!worker) return res.status(404).json({ message: "Worker not found" });
 
     worker.firstName = firstName || worker.firstName;
     worker.familyName = familyName || worker.familyName;
-    worker.workType = workType || worker.workType;
+    worker.job_type = job_type || worker.job_type ;
 
     await worker.save();
     res.status(200).json({ message: "Profile updated successfully", worker });
