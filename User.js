@@ -42,6 +42,7 @@ const UserSchema = new mongoose.Schema({
   reviews: [ReviewSchema],
   verified: { type: Boolean, default: false },
 
+//}, { timestamps: true }, { discriminatorKey: '__t' });
 }, { timestamps: true });
 
 // ✅ تحديث `name` عند تعديل `firstName` أو `familyName`
