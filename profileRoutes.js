@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const { getUserProfile, updateUserProfile, updateUserLocation, requestChangeUserContact, verifyChangeUserContact, uploadUserProfilePicture } = require("../controllers/userController");
 const { getWorkerProfile, updateWorkerProfile, updateWorkerLocation, requestChangeWorkerContact, verifyChangeWorkerContact, uploadWorkerProfilePicture } = require("../controllers/workerController");
-const authMiddleware = require("../middleware/authMiddleware");
+const {authMiddleware} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
