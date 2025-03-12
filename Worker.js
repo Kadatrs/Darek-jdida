@@ -43,7 +43,7 @@ const WorkerSchema = new mongoose.Schema({
     review: { type: String, required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
   }],
-  verified: { type: Boolean, default: false },
+  // verified: { type: Boolean, default: false },
 },
 
 { timestamps: true }
