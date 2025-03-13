@@ -93,15 +93,25 @@ const getNearbyRequests = async (req, res) => {
 const expressInterest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const workerId = req.user._id;
+    const workerId = req.user._id; // ✅ Get authenticated worker's ID
 
+    // ✅ Ensure only workers can express interest
+    if (!req.user || req.user.__t == "User") {
+      return res.status(403).json({ message: "Only workers can express interest in a request" });
+    }
+
+    // ✅ Find the service request
     const serviceRequest = await ServiceRequest.findById(requestId);
     if (!serviceRequest) return res.status(404).json({ message: "Request not found" });
 
-    if (!serviceRequest.interested_workers.includes(workerId)) {
-      serviceRequest.interested_workers.push(workerId);
-      await serviceRequest.save();
+    // ✅ Prevent duplicate interest
+    if (serviceRequest.interested_workers.includes(workerId)) {
+      return res.status(400).json({ message: "You have already expressed interest in this request" });
     }
+
+    // ✅ Add worker to interested_workers array
+    serviceRequest.interested_workers.push(workerId);
+    await serviceRequest.save();
 
     res.json({ message: "Interest registered", request: serviceRequest });
   } catch (error) {
@@ -109,51 +119,85 @@ const expressInterest = async (req, res) => {
   }
 };
 
+
 // ✅ User Selects a Worker
 const selectWorker = async (req, res) => {
-  try {
-    const { requestId } = req.params;
-    const { workerId } = req.body;
+    try {
+        const { requestId } = req.params;
+        const { workerId } = req.body;
 
-    const serviceRequest = await ServiceRequest.findById(requestId);
-    if (!serviceRequest) return res.status(404).json({ message: "Request not found" });
+        // ✅ Ensure only users can select a worker
+        if (req.userType !== "User") {
+            return res.status(403).json({ message: "Only users can select a worker" });
+        }
 
-    if (!serviceRequest.interested_workers.includes(workerId)) {
-      return res.status(400).json({ message: "Worker has not expressed interest" });
+        // ✅ Find the service request
+        const serviceRequest = await ServiceRequest.findById(requestId);
+        if (!serviceRequest) return res.status(404).json({ message: "Request not found" });
+
+        // ✅ Ensure the request belongs to the authenticated user
+        if (serviceRequest.user_id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "You can only assign workers to your own requests" });
+        }
+
+        // ✅ Ensure the worker has expressed interest
+        if (!serviceRequest.interested_workers.includes(workerId)) {
+            return res.status(400).json({ message: "Worker has not expressed interest in this request" });
+        }
+
+        // ✅ Assign the worker and update status
+        serviceRequest.selected_worker = workerId;
+        serviceRequest.status = "accepted";
+        await serviceRequest.save();
+
+        res.json({ message: "Worker selected successfully", request: serviceRequest });
+    } catch (error) {
+        res.status(500).json({ message: "Error selecting worker", error: error.message });
     }
-
-    serviceRequest.selected_worker = workerId;
-    serviceRequest.status = "accepted";
-    await serviceRequest.save();
-
-    res.json({ message: "Worker selected", request: serviceRequest });
-  } catch (error) {
-    res.status(500).json({ message: "Error selecting worker", error: error.message });
-  }
 };
+
 
 // ✅ Update Request Status (Worker Marks as Completed)
 const updateRequestStatus = async (req, res) => {
   try {
-    const { requestId } = req.params;
-    const { status } = req.body;
+      const { requestId } = req.params;
+      const { status } = req.body;
 
-    const validStatuses = ["pending", "interested", "accepted", "completed"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status update" });
-    }
+      // ✅ Only allow valid status updates
+      const validStatuses = ["pending", "accepted", "completed"];
+      if (!validStatuses.includes(status)) {
+          return res.status(400).json({ message: "Invalid status update" });
+      }
 
-    const serviceRequest = await ServiceRequest.findById(requestId);
-    if (!serviceRequest) return res.status(404).json({ message: "Request not found" });
+      // ✅ Find the service request
+      const serviceRequest = await ServiceRequest.findById(requestId);
+      if (!serviceRequest) return res.status(404).json({ message: "Request not found" });
 
-    serviceRequest.status = status;
-    await serviceRequest.save();
+      // ✅ Check permission: Only the user can update to "accepted"
+      if (status === "accepted" && req.userType !== "User") {
+          return res.status(403).json({ message: "Only users can accept a worker" });
+      }
 
-    res.json({ message: "Request status updated", request: serviceRequest });
+      // ✅ Check permission: Only the assigned worker can update to "completed"
+      if (status === "completed" && req.userType !== "Worker") {
+          return res.status(403).json({ message: "Only the assigned worker can mark as completed" });
+      }
+
+      // ✅ Ensure only the assigned worker marks "completed"
+      if (status === "completed" && req.user._id.toString() !== serviceRequest.selected_worker?.toString()) {
+          return res.status(403).json({ message: "Only the assigned worker can complete this request" });
+      }
+
+      // ✅ Update the request status
+      serviceRequest.status = status;
+      await serviceRequest.save();
+
+      res.json({ message: `Request status updated to '${status}'`, request: serviceRequest });
   } catch (error) {
-    res.status(500).json({ message: "Error updating request status", error: error.message });
+      res.status(500).json({ message: "Error updating request status", error: error.message });
   }
 };
+
 
 // ✅ Export Controllers
 module.exports = {
@@ -163,3 +207,14 @@ module.exports = {
   selectWorker,
   updateRequestStatus
 };
+
+
+
+
+
+
+
+
+
+
+
