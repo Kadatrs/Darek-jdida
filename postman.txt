@@ -1,405 +1,637 @@
-✅ **Testing All Features in Postman - Step by Step**  
+### ✅ **How to Test Notifications in Postman**  
 
-📌 **Before testing, make sure:**  
-1️⃣ Your server is running:  
-   ```sh
-   npm start
-   ```
-2️⃣ You know your `PORT` (default is `5000`).  
-3️⃣ You have a registered user/worker to test authentication (`JWT`).  
+Since your project is already set up with **notification routes**, let's go step by step to test them using **Postman**. 🚀  
 
 ---
 
-## **📌 1️⃣ Testing User & Worker Authentication**
-### **🔹 Register a New User (`POST /api/auth/user/register`)**
-📌 **Method:** `POST`  
-📌 **URL:** `http://localhost:5000/api/auth/user/register`  
-📌 **Body (JSON):**
+## **📌 1️⃣ Make Sure the Server is Running**
+Before testing, **start your server**:  
+```sh
+node app.js
+```
+or  
+```sh
+npm start
+```
+✔ Make sure you see **"Server is running on http://localhost:5000"** in the terminal.  
+
+---
+
+## **📌 2️⃣ Get a `JWT Token` for Testing**
+Since our routes require **authentication**, you need a **JWT Token**.
+
+### **🔹 Steps to Get a Token:**
+1️⃣ Open Postman and **Login as a User or Worker**  
+2️⃣ Use **`/api/auth/user/login`** or **`/api/auth/worker/login`**  
+3️⃣ Copy the `token` from the response  
+4️⃣ Use this token in the **Authorization** header for testing  
+
+✔ Example Login Request:  
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/auth/user/login
+```
+🔹 **Body (JSON):**  
 ```json
 {
-  "firstName": "John",
-  "familyName": "Doe",
-  "email": "john.doe@example.com",
-  "phone": "0678123456",
-  "password": "securePassword123"
+  "email": "user@example.com",
+  "password": "password123"
 }
 ```
-📌 **Expected Response:**  
+✔ **Copy the Token** from the response.
+
+---
+
+## **📌 3️⃣ Test Notification Endpoints in Postman**  
+
+### **📩 1️⃣ Get User Notifications**
+🔹 **Endpoint:**  
+```http
+GET http://localhost:5000/api/notifications/user
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+✔ This returns all notifications for the **logged-in user**.
+
+---
+
+### **📩 2️⃣ Get Worker Notifications**
+🔹 **Endpoint:**  
+```http
+GET http://localhost:5000/api/notifications/worker
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+✔ This returns all notifications for the **logged-in worker**.
+
+---
+
+### **📩 3️⃣ Mark Notification as Read**
+🔹 **Endpoint:**  
+```http
+PUT http://localhost:5000/api/notifications/NOTIFICATION_ID/read
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+✔ Replace `NOTIFICATION_ID` with an actual notification ID from the previous request.
+
+---
+
+### **📩 4️⃣ Send a General Notification**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/send
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
 ```json
 {
-  "message": "User registered successfully!",
-  "user": {
-    "_id": "65f2bc1a1234567890abcd",
-    "firstName": "John",
-    "familyName": "Doe",
-    "email": "john.doe@example.com",
-    "phone": "0678123456"
+  "userId": "USER_ID_HERE",
+  "userType": "User",
+  "message": "Your service request status has been updated!"
+}
+```
+✔ This sends a **notification** to the specified **user**.
+
+---
+
+### **📩 5️⃣ Notify User About Service Acceptance**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/service-accepted
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "userId": "USER_ID_HERE"
+}
+```
+✔ This notifies a **user** that their **service request was accepted**.
+
+---
+
+### **📩 6️⃣ Notify User About Service Completion**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/service-completed
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "userId": "USER_ID_HERE"
+}
+```
+✔ This notifies a **user** that their **service request was completed**.
+
+---
+
+### **📩 7️⃣ Notify User About Request Status Update**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/update-status
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "userId": "USER_ID_HERE",
+  "newStatus": "Completed"
+}
+```
+✔ This notifies a **user** when their request status is updated.
+
+---
+
+### **📩 8️⃣ Notify Worker About Request Cancellation**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/request-abandoned
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "workerId": "WORKER_ID_HERE",
+  "requestDetails": {
+    "jobType": "Electrician",
+    "location": { "full_address": "Downtown, Algiers" },
+    "budget": 1500
   }
 }
 ```
----
-### **🔹 User Login (`POST /api/auth/user/login`)**
-📌 **Method:** `POST`  
-📌 **URL:** `http://localhost:5000/api/auth/user/login`  
-📌 **Body (JSON):**
-```json
-{
-  "email": "john.doe@example.com",
-  "password": "securePassword123"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "Login successful!",
-  "token": "JWT_TOKEN_HERE"
-}
-```
-📌 **Save the `token`, you will need it for other tests.**
+✔ This notifies a **worker** if a **user cancels a request**.
 
 ---
 
-## **📌 2️⃣ Testing User & Worker Profiles**
-📌 **Add `Authorization: Bearer JWT_TOKEN_HERE` in `Headers` for each test.**
-
-### **🔹 Get User Profile (`GET /api/profile/user`)**
-📌 **Method:** `GET`  
-📌 **URL:** `http://localhost:5000/api/profile/user`  
-📌 **Headers:**
-```yaml
-Authorization: Bearer JWT_TOKEN_HERE
+### **📩 9️⃣ Send a Welcome Notification**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/welcome
 ```
-📌 **Expected Response:**
+🔹 **Body (JSON):**  
 ```json
 {
-  "user_id": "65f2bc1a1234567890abcd",
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "phone": "0678123456",
-  "profile_image_url": "",
-  "address": {
-    "latitude": null,
-    "longitude": null,
-    "full_address": ""
+  "userId": "USER_ID_HERE",
+  "userType": "User"
+}
+```
+✔ This sends a **welcome message** to a **new user or worker**.
+
+---
+
+## **📌 4️⃣ Check Email & SMS Notifications**
+After running the **notification tests**, check:  
+🔹 **Emails:** Open the recipient's email to confirm the notification.  
+🔹 **SMS Messages:** Check if the worker/user received the SMS (Twilio required).  
+
+---
+
+## **📌 5️⃣ Debugging & Troubleshooting**
+If **any error** occurs:  
+🔹 **Check server logs (`console.log`) for debugging information.**  
+🔹 **Ensure `emailService.js` & `smsService.js` are correctly configured.**  
+🔹 **Check `.env` file for Twilio & email credentials.**  
+🔹 **Ensure `MongoDB` is running & requests exist in the database.**  
+
+---
+
+### ✅ **🚀 Now You Are Ready to Test Notifications in Postman!**  
+✔ **Run these tests and confirm everything is working as expected.**  
+✔ **Let me know if you need help debugging or improving the process!** 🚀🔥
+
+
+
+
+//////////////////////////////////////////////////////////////////////    2 2 2 2 2 2 2 2 2 2 2 2
+
+
+
+
+### ✅ **How to Test Real-Time Messaging in Postman**  
+
+Since you have already built the **real-time messaging system**, let's test it in **Postman** and ensure everything is working correctly! 🚀  
+
+---
+
+## **📌 1️⃣ Make Sure Your Server is Running**  
+Before testing, start your server:  
+```sh
+node app.js
+```
+or  
+```sh
+npm start
+```
+✔ Make sure you see **"Server is running on http://localhost:5000"** in the terminal.
+
+---
+
+## **📌 2️⃣ Get a JWT Token for Testing**  
+Since chat routes require **authentication**, you need a **JWT token**.
+
+### **🔹 Steps to Get a Token:**  
+1️⃣ Open Postman and **Login as a User or Worker**  
+2️⃣ Use **`/api/auth/user/login`** or **`/api/auth/worker/login`**  
+3️⃣ Copy the `token` from the response  
+4️⃣ Use this token in the **Authorization** header for testing  
+
+✔ **Example Login Request:**  
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/auth/user/login
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+✔ **Copy the Token** from the response.
+
+---
+
+## **📌 3️⃣ Test Chat Endpoints in Postman**  
+
+### **📩 1️⃣ Send a Message (User to Worker)**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/chat/send
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "receiverId": "WORKER_ID_HERE",
+  "message": "Hello! I need your help with a service."
+}
+```
+✔ This sends a **message** from a **user to a worker**.
+
+---
+
+### **📩 2️⃣ Send a Message (Worker to User)**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/chat/send
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "receiverId": "USER_ID_HERE",
+  "message": "Hello! I am available for the job."
+}
+```
+✔ This sends a **message** from a **worker to a user**.
+
+---
+
+### **📩 3️⃣ Get All Messages Between User & Worker**
+🔹 **Endpoint:**  
+```http
+GET http://localhost:5000/api/chat/conversation/USER_ID_HERE/WORKER_ID_HERE
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+✔ This returns the **chat history** between a **user and a worker**.
+
+---
+
+### **📩 4️⃣ Get User's Chat List**
+🔹 **Endpoint:**  
+```http
+GET http://localhost:5000/api/chat/user
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+✔ This returns **all chats** for a logged-in **user**.
+
+---
+
+### **📩 5️⃣ Get Worker's Chat List**
+🔹 **Endpoint:**  
+```http
+GET http://localhost:5000/api/chat/worker
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+✔ This returns **all chats** for a logged-in **worker**.
+
+---
+
+## **📌 4️⃣ Check Real-Time Messaging (WebSocket)**
+Postman **does not support real-time WebSocket testing**, so you can:  
+✔ Use **Postman for API tests**  
+✔ Use **a WebSocket tool like `Socket.io` client** to check real-time messages  
+
+---
+
+## **📌 5️⃣ Debugging & Troubleshooting**
+If **any error** occurs:  
+🔹 **Check server logs (`console.log`) for debugging information.**  
+🔹 **Ensure `Socket.io` is properly initialized in `app.js`.**  
+🔹 **Check MongoDB for stored messages (`messages` collection).**  
+
+---
+
+### ✅ **🚀 Now You Are Ready to Test Messaging in Postman!**  
+✔ **Run these tests and confirm everything is working as expected.**  
+✔ **Let me know if you need help debugging or improving the process!** 🚀🔥
+
+
+
+//////////////////////////////////////////////////////////////////////      3 3 3 3 3 3 3 3 3 3 
+
+
+
+
+### ✅ **How to Test Email/SMS Alerts in Postman**  
+
+Now that we have finished **real-time messaging**, let's test the **email/SMS alerts** to ensure they are working correctly. 🚀  
+
+---
+
+## **📌 1️⃣ Make Sure Your Server is Running**  
+Before testing, start your server:  
+```sh
+node app.js
+```
+or  
+```sh
+npm start
+```
+✔ Make sure you see **"Server is running on http://localhost:5000"** in the terminal.
+
+---
+
+## **📌 2️⃣ Check Your `.env` File for Email & SMS Settings**  
+Ensure your **email and Twilio configurations** are set correctly.  
+
+📂 **File:** `.env`  
+```env
+TWILIO_SID=your_twilio_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_registered_number
+
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_email_password
+```
+✔ **If Twilio is in trial mode, verify the phone number in [Twilio Console](https://www.twilio.com/console/sms/verified-numbers).**  
+
+---
+
+## **📌 3️⃣ Test Sending Email/SMS Alerts in Postman**  
+
+### **📩 1️⃣ Send Welcome Notification (User or Worker)**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/welcome
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "userId": "USER_OR_WORKER_ID",
+  "userType": "User"  // Change to "Worker" if testing for worker
+}
+```
+✔ **Expected Response:**  
+```json
+{ "message": "Welcome notification sent successfully." }
+```
+✔ **Check your email inbox or phone for the message.**  
+
+---
+
+### **📩 2️⃣ Send Job Status Update Alert (User)**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/job-status
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "userId": "USER_ID",
+  "status": "In Progress"
+}
+```
+✔ **Expected Response:**  
+```json
+{ "message": "Job status update sent successfully." }
+```
+✔ **User should receive an email or SMS depending on their registered contact method.**  
+
+---
+
+### **📩 3️⃣ Notify Worker When a User Cancels a Job**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/cancel-job
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
+```json
+{
+  "workerId": "WORKER_ID",
+  "requestDetails": {
+    "jobType": "Plumber",
+    "location": "Algiers, Algeria",
+    "budget": 50
   }
 }
 ```
+✔ **Expected Response:**  
+```json
+{ "message": "Worker notified about job cancellation." }
+```
+✔ **Worker should receive an email (not SMS).**  
 
 ---
 
-### **🔹 Update User Profile (`PUT /api/profile/user`)**
-📌 **Method:** `PUT`  
-📌 **Body (JSON):**
+### **📩 4️⃣ Notify User When a Worker Accepts a Job**
+🔹 **Endpoint:**  
+```http
+POST http://localhost:5000/api/notifications/job-accepted
+```
+🔹 **Headers:**  
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+```
+🔹 **Body (JSON):**  
 ```json
 {
-  "firstName": "John Updated",
-  "familyName": "Doe Updated"
+  "userId": "USER_ID"
 }
 ```
-📌 **Expected Response:**  
+✔ **Expected Response:**  
 ```json
-{
-  "message": "Profile updated successfully!"
-}
+{ "message": "User notified about job acceptance." }
 ```
+✔ **User should receive an email or SMS depending on their registered contact method.**  
 
 ---
 
-## **📌 3️⃣ Testing Profile Picture Upload**
-### **🔹 Upload User Profile Picture (`PUT /api/profile/user/upload-profile-picture`)**
-📌 **Method:** `PUT`  
-📌 **URL:** `http://localhost:5000/api/profile/user/upload-profile-picture`  
-📌 **Headers:**
-```yaml
-Authorization: Bearer JWT_TOKEN_HERE
-```
-📌 **Body (`form-data`):**  
-- `Key:` `profilePicture`  
-- `Type:` `File`  
-- `Value:` **Choose an image from your device**  
-
-📌 **Expected Response:**  
-```json
-{
-  "message": "File uploaded successfully!",
-  "file": "uploads/USER_ID-TIMESTAMP-image.jpg"
-}
-```
+## **📌 4️⃣ Debugging & Troubleshooting**
+If **emails/SMS are not sent**, try the following:  
+🔹 **Check console logs (`console.log()`) for debugging.**  
+🔹 **Verify `.env` credentials for Gmail/Twilio.**  
+🔹 **Check Twilio logs at [Twilio Console](https://www.twilio.com/console/sms/logs).**  
+🔹 **Ensure the phone number is in the correct international format (`+213xxxxxxxxx`).**  
 
 ---
 
-## **📌 4️⃣ Testing Email or Phone Change**
-### **🔹 Request Email Change (`POST /api/profile/user/request-change-contact`)**
-📌 **Body (JSON):**
-```json
+### ✅ **🚀 Now You Are Ready to Test Email/SMS Alerts in Postman!**  
+✔ **Run these tests and confirm emails/SMS are being sent successfully.**  
+✔ **Let me know if you need help debugging or improving the process!** 🔥 
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+📌 4️⃣ كيفية اختبار رفع الصور والفيديوهات في Postman
+1️⃣ افتح Postman
+2️⃣ حدد POST http://localhost:5000/api/requests/create
+3️⃣ انتقل إلى تبويب Body ثم form-data
+4️⃣ أضف الحقول التالية:
+
+jobType = Plumbing
+description = "أحتاج لإصلاح أنبوب مكسور"
+latitude = 36.75
+longitude = 3.04
+full_address = "Algiers, Algeria"
+budget = 50
+urgency = Immediate
+mediaComment = "شاهد المشكلة في الصورة"
+mediaFile = [اختر صورة أو فيديو من جهازك] (تأكد من تحديد نوع File في Postman)
+✔ إذا كان كل شيء يعمل، ستظهر استجابة مثل هذه:
+
+json
+Copier
+Modifier
 {
-  "newEmail": "john.updated@example.com"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "OTP sent for contact update"
-}
-```
-
----
-### **🔹 Verify Email Change (`POST /api/profile/user/verify-change-contact`)**
-📌 **Body (JSON):**
-```json
-{
-  "otp": "123456",
-  "newEmail": "john.updated@example.com"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "Contact updated successfully"
-}
-```
-
----
-
-## **📌 5️⃣ Testing Location Update**
-### **🔹 Update User Location (`PUT /api/profile/user/location`)**
-📌 **Body (JSON):**
-```json
-{
-  "latitude": 36.7528,
-  "longitude": 3.0422,
-  "full_address": "Algiers, Algeria"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "Location updated successfully!"
-}
-```
-
----
-
-### ✅ **📌 Summary**
-✔ **`POST /api/auth/user/register`** → Register a new user  
-✔ **`POST /api/auth/user/login`** → Login and receive a `JWT`  
-✔ **`GET /api/profile/user`** → Get user profile  
-✔ **`PUT /api/profile/user`** → Update user profile  
-✔ **`PUT /api/profile/user/upload-profile-picture`** → Upload profile picture  
-✔ **`POST /api/profile/user/request-change-contact`** → Request email or phone change  
-✔ **`POST /api/profile/user/verify-change-contact`** → Confirm change via OTP  
-✔ **`PUT /api/profile/user/location`** → Update user location  
-
-📂 **Do you want to add tests for any other features? 🚀🔥**
-
-
-
-
-////////////////////////////////////////    worker
-
-
-
-
-
-✅ **Testing All Worker Features in Postman - Step by Step**  
-
-📌 **Before testing, make sure:**  
-1️⃣ Your server is running:  
-   ```sh
-   npm start
-   ```
-2️⃣ You know your `PORT` (default is `5000`).  
-3️⃣ You have a registered worker to test authentication (`JWT`).  
-
----
-
-## **📌 1️⃣ Testing Worker Authentication**
-### **🔹 Register a New Worker (`POST /api/auth/worker/register`)**
-📌 **Method:** `POST`  
-📌 **URL:** `http://localhost:5000/api/auth/worker/register`  
-📌 **Body (JSON):**
-```json
-{
-  "firstName": "Alice",
-  "familyName": "Smith",
-  "email": "alice.smith@example.com",
-  "phone": "0678993322",
-  "password": "securePassword123",
-  "job_type": "Electrician",
-  "experience_years": 5
-}
-```
-📌 **Expected Response:**  
-```json
-{
-  "message": "Worker registered successfully!",
-  "worker": {
-    "_id": "65f2bc1a1234567890abcd",
-    "firstName": "Alice",
-    "familyName": "Smith",
-    "email": "alice.smith@example.com",
-    "phone": "0678993322",
-    "job_type": "Electrician",
-    "experience_years": 5
+  "message": "✅ تم إنشاء الطلب بنجاح!",
+  "request": {
+    "jobType": "Plumbing",
+    "description": "أحتاج لإصلاح أنبوب مكسور",
+    "media": {
+      "fileUrl": "/uploads/1700000000-image.jpg",
+      "fileType": "image",
+      "comment": "شاهد المشكلة في الصورة"
+    },
+    "location": {
+      "latitude": 36.75,
+      "longitude": 3.04,
+      "full_address": "Algiers, Algeria"
+    },
+    "budget": 50,
+    "urgency": "Immediate",
+    "status": "Pending",
+    "offers": []
   }
 }
-```
----
-### **🔹 Worker Login (`POST /api/auth/worker/login`)**
-📌 **Method:** `POST`  
-📌 **URL:** `http://localhost:5000/api/auth/worker/login`  
-📌 **Body (JSON):**
-```json
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+📌 5️⃣ كيفية اختبار الإشعارات الفورية في Postman
+1️⃣ نشر طلب جديد (يؤدي إلى إرسال إشعارات)
+🔹 POST http://localhost:5000/api/requests/create
+✔ Body (form-data)
+
+jobType = Plumbing
+description = "أحتاج لإصلاح أنبوب مكسور"
+latitude = 36.75
+longitude = 3.04
+full_address = "Algiers, Algeria"
+budget = 50
+urgency = Immediate
+✔ النتيجة المتوقعة:
+
+json
+Copier
+Modifier
 {
-  "email": "alice.smith@example.com",
-  "password": "securePassword123"
+  "message": "✅ تم إنشاء الطلب وإرسال الإشعارات بنجاح!",
+  "request": { ... }
 }
-```
-📌 **Expected Response:**
-```json
+📩 (العمال القريبون يتلقون إشعارًا فوريًا الآن!) 🎉
+
+2️⃣ جلب إشعارات العامل
+🔹 GET http://localhost:5000/api/notifications/worker
+✔ النتيجة المتوقعة:
+
+json
+Copier
+Modifier
 {
-  "message": "Login successful!",
-  "token": "JWT_TOKEN_HERE"
+  "notifications": [
+    {
+      "_id": "660f31b2e96c1c0012345678",
+      "recipient": "650f31b2e96c1c0012345679",
+      "recipientType": "Worker",
+      "message": "🔔 طلب جديد متاح: Plumbing بالقرب منك! قم بمراجعته الآن.",
+      "isRead": false,
+      "createdAt": "2024-04-10T12:00:00.000Z"
+    }
+  ]
 }
-```
-📌 **Save the `token`, you will need it for other tests.**
+📌 (الآن العامل يرى الإشعار!) ✅
 
----
+3️⃣ وضع الإشعار كمقروء
+🔹 PUT http://localhost:5000/api/notifications/660f31b2e96c1c0012345678/read
+✔ النتيجة المتوقعة:
 
-## **📌 2️⃣ Testing Worker Profile**
-📌 **Add `Authorization: Bearer JWT_TOKEN_HERE` in `Headers` for each test.**
-
-### **🔹 Get Worker Profile (`GET /api/profile/worker`)**
-📌 **Method:** `GET`  
-📌 **URL:** `http://localhost:5000/api/profile/worker`  
-📌 **Headers:**
-```yaml
-Authorization: Bearer JWT_TOKEN_HERE
-```
-📌 **Expected Response:**
-```json
+json
+Copier
+Modifier
 {
-  "worker_id": "65f2bc1a1234567890abcd",
-  "name": "Alice Smith",
-  "email": "alice.smith@example.com",
-  "phone": "0678993322",
-  "profile_image_url": "",
-  "address": {
-    "latitude": null,
-    "longitude": null,
-    "full_address": ""
-  },
-  "job_type": "Electrician",
-  "experience_years": 5,
-  "total_jobs_completed": 0,
-  "average_rating": 0
+  "message": "✅ تم وضع الإشعار كمقروء",
+  "notification": { "isRead": true }
 }
-```
+📌 (تم تحديث حالة الإشعار إلى "مقروء"!) ✅
 
----
 
-### **🔹 Update Worker Profile (`PUT /api/profile/worker`)**
-📌 **Method:** `PUT`  
-📌 **Body (JSON):**
-```json
-{
-  "firstName": "Alice Updated",
-  "familyName": "Smith Updated",
-  "job_type": "Plumber"
-}
-```
-📌 **Expected Response:**  
-```json
-{
-  "message": "Profile updated successfully!"
-}
-```
-
----
-
-## **📌 3️⃣ Testing Profile Picture Upload**
-### **🔹 Upload Worker Profile Picture (`PUT /api/profile/worker/upload-profile-picture`)**
-📌 **Method:** `PUT`  
-📌 **URL:** `http://localhost:5000/api/profile/worker/upload-profile-picture`  
-📌 **Headers:**
-```yaml
-Authorization: Bearer JWT_TOKEN_HERE
-```
-📌 **Body (`form-data`):**  
-- `Key:` `profilePicture`  
-- `Type:` `File`  
-- `Value:` **Choose an image from your device**  
-
-📌 **Expected Response:**  
-```json
-{
-  "message": "File uploaded successfully!",
-  "file": "uploads/WORKER_ID-TIMESTAMP-image.jpg"
-}
-```
-
----
-
-## **📌 4️⃣ Testing Email or Phone Change**
-### **🔹 Request Email Change (`POST /api/profile/worker/request-change-contact`)**
-📌 **Body (JSON):**
-```json
-{
-  "newEmail": "alice.updated@example.com"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "OTP sent for contact update"
-}
-```
-
----
-### **🔹 Verify Email Change (`POST /api/profile/worker/verify-change-contact`)**
-📌 **Body (JSON):**
-```json
-{
-  "otp": "123456",
-  "newEmail": "alice.updated@example.com"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "Contact updated successfully"
-}
-```
-
----
-
-## **📌 5️⃣ Testing Location Update**
-### **🔹 Update Worker Location (`PUT /api/profile/worker/location`)**
-📌 **Body (JSON):**
-```json
-{
-  "latitude": 36.7528,
-  "longitude": 3.0422,
-  "full_address": "Algiers, Algeria"
-}
-```
-📌 **Expected Response:**
-```json
-{
-  "message": "Location updated successfully!"
-}
-```
-
----
-
-### ✅ **📌 Summary**
-✔ **`POST /api/auth/worker/register`** → Register a new worker  
-✔ **`POST /api/auth/worker/login`** → Login and receive a `JWT`  
-✔ **`GET /api/profile/worker`** → Get worker profile  
-✔ **`PUT /api/profile/worker`** → Update worker profile  
-✔ **`PUT /api/profile/worker/upload-profile-picture`** → Upload profile picture  
-✔ **`POST /api/profile/worker/request-change-contact`** → Request email or phone change  
-✔ **`POST /api/profile/worker/verify-change-contact`** → Confirm change via OTP  
-✔ **`PUT /api/profile/worker/location`** → Update worker location  
-
-📂 **Do you want to add tests for any other features? 🚀🔥**
+//////////////////////////////////////////////////////////////////////////////
